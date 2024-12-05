@@ -26,15 +26,15 @@ class ZdfModelMesh:
         self.odb = odb
 
         # 获取所有节点的id和坐标
-        nodes = self.odb.rootAssembly.nodeSets[" ALL NODES"].nodes
+        nodes = self.odb.rootAssembly.nodeSets[" ALL NODES"].nodes[0]
         self.node_ids = []
         self.coordinates = []
         for node in nodes:
             self.node_ids.append(node.label)
-            self.coordinates.append(list(node.coordinates))
+            self.coordinates.append(node.coordinates.tolist())
         
         # 获取所有单元的id和连接性
-        elements = self.odb.rootAssembly.elementSets[" ALL ELEMENTS"].elements
+        elements = self.odb.rootAssembly.elementSets[" ALL ELEMENTS"].elements[0]
         self.element_ids = []
         self.connectivties = []
         for element in elements:
@@ -52,8 +52,8 @@ class ZdfModelMesh:
                 },
                 "coordinates": {
                     "__isRecord__": "true",
-                    "__dims__": [len(self.node_ids), len(self.node_coordinates[0])],
-                    "__data__": self.node_coordinates
+                    "__dims__": [len(self.node_ids), len(self.coordinates[0])],
+                    "__data__": self.coordinates
                 }
             },
             "elements" : {
@@ -64,8 +64,8 @@ class ZdfModelMesh:
                 },
                 "coordinates": {
                     "__isRecord__": "true",
-                    "__dims__": [len(self.element_ids), len(self.element_connectivities[0])],
-                    "__data__": self.element_connectivities
+                    "__dims__": [len(self.element_ids), len(self.connectivties[0])],
+                    "__data__": self.connectivties
                 }
             }
         }
@@ -87,9 +87,9 @@ class ZdfField:
             data = value.data
             ids.append(node_id)
             if self.field_name in ["CF", "RF", "U"]:
-                values.append(TotalTransformer(data))
+                values.append(TotalTransformer()(data))
             else:
-                values.append(NaiveTransformer(data))
+                values.append(NaiveTransformer()(data))
 
         result = {
             "id": {
@@ -119,7 +119,7 @@ class ZdfStep:
             "step" : self.odb.steps[self.step_name].number,
             "time_value" : 1.0,
         }
-        result.extend({field.name : field.get_data() for field in self.fields})
+        result.update({field.field_name : field.get_data() for field in self.fields})
         return result
 
 class ZdfItems:
@@ -136,7 +136,7 @@ class ZdfGlobal:
     def __init__(self, odb_file_path) -> None:
         self.odb = odbAccess.openOdb(odb_file_path)
 
-        self.items = ZdfItems(self.step_names, 1.0, self.fields)
+        self.items = ZdfItems(self.odb)
         self.model_mesh = ZdfModelMesh(self.odb)
 
     def get_data(self):
@@ -156,9 +156,7 @@ class ZdfGlobal:
             "result_sets" : {
                 os.path.basename(odb_file_path).split(".")[0] : {
                     "analysis" : 1,
-                    "items" : {
-                        self.items.get_data()
-                    }
+                    "items" : self.items.get_data()
                 }
             }
         }
