@@ -21,6 +21,52 @@ class TotalTransformer:
         return [data[0], data[1], data[2], total]
 
 #==============================================================================#
+
+class ZdfElement:
+    def __init__(self, odb):
+        self.odb = odb
+
+    @classmethod
+    def _abaqus_type_2_zdf_type(cls, aba_type):
+        if aba_type[:3] != "C3D":
+            return ("ERROR", -1)
+        node_num = ""
+        for c in aba_type[3:]:
+            if c.isdigit():
+                node_num += c
+            else:
+                break
+        return ("hexa8", 29)
+
+
+    def get_data(self):
+        elements = self.odb.rootAssembly.elementSets[" ALL ELEMENTS"].elements[0]
+        type2 = {}
+        for element in elements:
+            zdf_type, type_id = self._abaqus_type_2_zdf_type(element.type)
+            if zdf_type in type2:
+                type2[zdf_type]["id"]["__data__"].append(element.label)
+                type2[zdf_type]["value"]["__data__"].append(list(element.connectivity))
+            else:
+                type2[zdf_type] = {
+                    "type id": type_id,
+                    "id" : {
+                        "__isRecord__": True,
+                        "__dimes__": [],
+                        "__data__": []
+                    },
+                    "value": {
+                        "__isRecord__": True,
+                        "__dims__": [],
+                        "__data__": []
+                    }
+                }
+        for key in type2:
+            type2[key]["id"]["__dims__"] = [len(type2[key]["id"]["__data__"])]
+            type2[key]["value"]["__dims__"] = [len(type2[key]["value"]["__data__"]), len(type2[key]["value"]["__data__"][0])]
+
+        return type2
+
 class ZdfModelMesh:
     def __init__(self, odb) -> None:
         self.odb = odb
@@ -33,13 +79,7 @@ class ZdfModelMesh:
             self.node_ids.append(node.label)
             self.coordinates.append(node.coordinates.tolist())
         
-        # 获取所有单元的id和连接性
-        elements = self.odb.rootAssembly.elementSets[" ALL ELEMENTS"].elements[0]
-        self.element_ids = []
-        self.connectivties = []
-        for element in elements:
-            self.element_ids.append(element.label)
-            self.connectivties.append(list(element.connectivity))
+        self.elements = ZdfElement(self.odb)
 
 
     def get_data(self):
@@ -56,19 +96,9 @@ class ZdfModelMesh:
                     "__data__": self.coordinates
                 }
             },
-            "elements" : {
-                "id": {
-                    "__isRecord__": True,
-                    "__dims__": [len(self.element_ids)],
-                    "__data__": self.element_ids
-                },
-                "value": {
-                    "__isRecord__": True,
-                    "__dims__": [len(self.element_ids), len(self.connectivties[0])],
-                    "__data__": self.connectivties
-                }
-            }
+            "elements" : self.elements.get_data()
         }
+
         return result
 
 class ZdfField:
