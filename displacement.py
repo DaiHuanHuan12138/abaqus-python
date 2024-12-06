@@ -46,24 +46,24 @@ class ZdfModelMesh:
         result = {
             "nodes" : {
                 "id": {
-                    "__isRecord__": "true",
+                    "__isRecord__": True,
                     "__dims__": [len(self.node_ids)],
                     "__data__": self.node_ids
                 },
-                "coordinates": {
-                    "__isRecord__": "true",
+                "value": {
+                    "__isRecord__": True,
                     "__dims__": [len(self.node_ids), len(self.coordinates[0])],
                     "__data__": self.coordinates
                 }
             },
             "elements" : {
                 "id": {
-                    "__isRecord__": "true",
+                    "__isRecord__": True,
                     "__dims__": [len(self.element_ids)],
                     "__data__": self.element_ids
                 },
-                "coordinates": {
-                    "__isRecord__": "true",
+                "value": {
+                    "__isRecord__": True,
                     "__dims__": [len(self.element_ids), len(self.connectivties[0])],
                     "__data__": self.connectivties
                 }
@@ -93,12 +93,12 @@ class ZdfField:
 
         result = {
             "id": {
-                "__isRecord__": "true",
+                "__isRecord__": True,
                 "__dims__": [len(ids)],
                 "__data__": ids
             },
             "value": {
-                "__isRecord__": "true",
+                "__isRecord__": True,
                 "__dims__": [len(ids), len(values[0])],
                 "__data__": values
             }
@@ -134,8 +134,8 @@ class ZdfItems:
 
 class ZdfGlobal:
     def __init__(self, odb_file_path) -> None:
+        self.model_name = os.path.basename(odb_file_path).split(".")[0]
         self.odb = odbAccess.openOdb(odb_file_path)
-
         self.items = ZdfItems(self.odb)
         self.model_mesh = ZdfModelMesh(self.odb)
 
@@ -146,7 +146,7 @@ class ZdfGlobal:
                 "date": f"{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}",
                 "org": "ZWSoft",
                 "author": "",
-                "model": "Undefined",
+                "model": self.model_name,
                 "version_digest": "",
                 "zw_app": "ZW3D",
             },
@@ -161,7 +161,7 @@ class ZdfGlobal:
             }
         }
         return global_template
- 
+
 
 # 使用示例
 odb_file_path = "D:\\temp\\Job-2.odb"

@@ -1,10 +1,10 @@
 {
   "headers": {
     "version": 1.0,
-    "date": "2024-12-05 14:51:35",
+    "date": "2024-12-05 16:24:16",
     "org": "ZWSoft",
     "author": "",
-    "model": "Undefined",
+    "model": "Job-2",
     "version_digest": "",
     "zw_app": "ZW3D"
   },
@@ -12,7 +12,7 @@
     "mesh": {
       "nodes": {
         "id": {
-          "__isRecord__": "true",
+          "__isRecord__": true,
           "__dims__": [
             462
           ],
@@ -481,8 +481,8 @@
             462
           ]
         },
-        "coordinates": {
-          "__isRecord__": "true",
+        "value": {
+          "__isRecord__": true,
           "__dims__": [
             462,
             3
@@ -2803,7 +2803,7 @@
       },
       "elements": {
         "id": {
-          "__isRecord__": "true",
+          "__isRecord__": true,
           "__dims__": [
             300
           ],
@@ -3110,8 +3110,8 @@
             300
           ]
         },
-        "coordinates": {
-          "__isRecord__": "true",
+        "value": {
+          "__isRecord__": true,
           "__dims__": [
             300,
             8
@@ -6131,7 +6131,7 @@
           "time_value": 1.0,
           "CF": {
             "id": {
-              "__isRecord__": "true",
+              "__isRecord__": true,
               "__dims__": [
                 462
               ],
@@ -6601,7 +6601,7 @@
               ]
             },
             "value": {
-              "__isRecord__": "true",
+              "__isRecord__": true,
               "__dims__": [
                 462,
                 4
@@ -9384,7 +9384,7 @@
           },
           "E": {
             "id": {
-              "__isRecord__": "true",
+              "__isRecord__": true,
               "__dims__": [
                 300
               ],
@@ -9692,7 +9692,7 @@
               ]
             },
             "value": {
-              "__isRecord__": "true",
+              "__isRecord__": true,
               "__dims__": [
                 300,
                 6
@@ -12103,7 +12103,7 @@
           },
           "RF": {
             "id": {
-              "__isRecord__": "true",
+              "__isRecord__": true,
               "__dims__": [
                 462
               ],
@@ -12573,7 +12573,7 @@
               ]
             },
             "value": {
-              "__isRecord__": "true",
+              "__isRecord__": true,
               "__dims__": [
                 462,
                 4
@@ -15356,7 +15356,7 @@
           },
           "S": {
             "id": {
-              "__isRecord__": "true",
+              "__isRecord__": true,
               "__dims__": [
                 300
               ],
@@ -15664,7 +15664,7 @@
               ]
             },
             "value": {
-              "__isRecord__": "true",
+              "__isRecord__": true,
               "__dims__": [
                 300,
                 6
@@ -18075,7 +18075,7 @@
           },
           "U": {
             "id": {
-              "__isRecord__": "true",
+              "__isRecord__": true,
               "__dims__": [
                 462
               ],
@@ -18545,7 +18545,7 @@
               ]
             },
             "value": {
-              "__isRecord__": "true",
+              "__isRecord__": true,
               "__dims__": [
                 462,
                 4
