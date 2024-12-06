@@ -44,15 +44,12 @@ class ZdfElement:
         type2 = {}
         for element in elements:
             zdf_type, type_id = self._abaqus_type_2_zdf_type(element.type)
-            if zdf_type in type2:
-                type2[zdf_type]["id"]["__data__"].append(element.label)
-                type2[zdf_type]["value"]["__data__"].append(list(element.connectivity))
-            else:
+            if zdf_type not in type2:
                 type2[zdf_type] = {
                     "type id": type_id,
                     "id" : {
                         "__isRecord__": True,
-                        "__dimes__": [],
+                        "__dims__": [],
                         "__data__": []
                     },
                     "value": {
@@ -61,6 +58,9 @@ class ZdfElement:
                         "__data__": []
                     }
                 }
+            type2[zdf_type]["id"]["__data__"].append(element.label)
+            type2[zdf_type]["value"]["__data__"].append(list(element.connectivity))
+
         for key in type2:
             type2[key]["id"]["__dims__"] = [len(type2[key]["id"]["__data__"])]
             type2[key]["value"]["__dims__"] = [len(type2[key]["value"]["__data__"]), len(type2[key]["value"]["__data__"][0])]
@@ -177,8 +177,21 @@ class ZdfGlobal:
                 "org": "ZWSoft",
                 "author": "",
                 "model": self.model_name,
-                "version_digest": "",
+                "version_digest": "1.0.0,VERNUM:04/29/2022(9485:eccfecd9f9e4)",
+                "customize_prefix" : "zw_",
                 "zw_app": "ZW3D",
+            },
+            "global" : {
+                "units" : {
+                    "mass" : "Kilogram",
+                    "length" : "Meter",
+                    "time" : "Second",
+                    "temperature" : "Kelvin",
+                    "electric_current" : "Ampere",
+                    "substance_amount" : "Mole",
+                    "luminous_intensity" : "Candela",
+                    "angle" : "Radian",
+                }
             },
             "model": {
                 "mesh" : self.model_mesh.get_data()
