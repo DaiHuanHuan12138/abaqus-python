@@ -40,7 +40,9 @@ class ZdfElement:
 
 
     def get_data(self):
-        elements = self.odb.rootAssembly.elementSets[" ALL ELEMENTS"].elements[0]
+        for part_name, part in self.odb.rootAssembly.instances.items():
+            elements = part.elements
+            break  #TODO：考虑多个part的情况，只取第一个part的element
         type2 = {}
         for element in elements:
             zdf_type, type_id = self._abaqus_type_2_zdf_type(element.type)
@@ -72,7 +74,10 @@ class ZdfModelMesh:
         self.odb = odb
 
         # 获取所有节点的id和坐标
-        nodes = self.odb.rootAssembly.nodeSets[" ALL NODES"].nodes[0]
+        nodes = []
+        for part_name, part in self.odb.rootAssembly.instances.items():
+            nodes = part.nodes
+            break #TODO：考虑多个part的情况，只取第一个part的node
         self.node_ids = []
         self.coordinates = []
         for node in nodes:
@@ -207,7 +212,7 @@ class ZdfGlobal:
 
 
 # 使用示例
-odb_file_path = "D:\\temp\\Job-2.odb"
+odb_file_path = "D:\\temp\\Job-1-new.odb"
 step_name = "Step-1"
 
 data = ZdfGlobal(odb_file_path).get_data()
