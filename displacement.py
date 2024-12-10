@@ -28,15 +28,56 @@ class ZdfElement:
 
     @classmethod
     def _abaqus_type_2_zdf_type(cls, aba_type):
-        if aba_type[:3] != "C3D":
-            return ("ERROR", -1)
-        node_num = ""
+        dims, node_num, zdf_type_id = -1, -1, -1
+        zdf_type_str = ""
+        # TODO: 目前只支持Solid类型中的1、2、3维单元
+        if aba_type[:3] == "C1D":
+            dims = 1
+        elif aba_type[:3] == "C2D":
+            dims = 2
+        elif aba_type[:3] == "C3D":
+            dims = 3
+
+        # 决定node_num
+        node_num_str = ""
         for c in aba_type[3:]:
             if c.isdigit():
-                node_num += c
+                node_num_str += c
             else:
                 break
-        return ("hexa8", 29)
+        node_num = int(node_num_str)
+
+        # 决定 zdf_type_id and zdf_type_str
+        id_and_str = {
+            1: {
+                2: ("edge2", 6),
+                3: ("edge3", 7),
+            },
+            2: {
+                3: ("faceq3", 20),
+                6: ("faceq6", 21),
+                4: ("faceq4", 22),
+                8: ("faceq8", 23),
+            },
+            3: {
+                4: ("tetra4", 27),
+                10: ("tetra10", 28),
+
+                8: ("hexa8", 29),
+                20: ("hexa20", 30),
+                27: ("hexa27", 31),
+
+                5: ("pyramid5", 32),
+                13: ("pyramid13", 33),
+                14: ("pyramid14", 34),
+
+                6: ("wedge6", 35),
+                7: ("wedge15", 36),
+                18: ("wedge18", 37)
+            }
+        }
+
+        return id_and_str[dims][node_num]
 
 
     def get_data(self):
@@ -176,7 +217,7 @@ class ZdfGlobal:
 
     def get_data(self):
         global_template = {
-            "headers": {
+            "header": {
                 "version": 1.0,
                 "date": f"{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}",
                 "org": "ZWSoft",
