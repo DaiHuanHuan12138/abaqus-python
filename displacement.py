@@ -81,6 +81,7 @@ class ZdfElement:
 
 
     def get_data(self):
+        elements = []
         for part_name, part in self.odb.rootAssembly.instances.items():
             elements = part.elements
             break  #TODO：考虑多个part的情况，只取第一个part的element
@@ -154,20 +155,20 @@ class ZdfField:
         self.field_name = field_name
 
     def get_data(self):
-        ids = []
-        values = []
+        ids, values, component_labels = [], [], []
 
         # 遍历所有节点的数据
         for value in self.odb.steps[self.step_name].frames[-1].fieldOutputs[self.field_name].values:
             node_id = value.nodeLabel
             data = value.data
             ids.append(node_id)
-            if self.field_name in ["CF", "RF", "U"]:
-                values.append(TotalTransformer()(data))
-            else:
-                values.append(NaiveTransformer()(data))
+            values.append(NaiveTransformer()(data))
+
+        component_labels = list(self.odb.steps[self.step_name].frames[-1].fieldOutputs[self.field_name].componentLabels)
 
         result = {
+            "variables": component_labels,
+            "type": "translation",
             "id": {
                 "__isRecord__": True,
                 "__dims__": [len(ids)],
