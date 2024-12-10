@@ -107,7 +107,12 @@ class ZdfElement:
 
         for key in type2:
             type2[key]["id"]["__dims__"] = [len(type2[key]["id"]["__data__"])]
-            type2[key]["value"]["__dims__"] = [len(type2[key]["value"]["__data__"]), len(type2[key]["value"]["__data__"][0])]
+            type2[key]["value"]["__dims__"] = [len(type2[key]["value"]["__data__"]),
+                                               len(type2[key]["value"]["__data__"][0])]
+
+            if type2[key]["id"]["__data__"][0] is None:
+                # 处理id为None的情况
+                type2[key]["id"]["__data__"] = list(range(1, len(type2[key]["id"]["__data__"]) + 1))
 
         return type2
 
@@ -125,7 +130,7 @@ class ZdfModelMesh:
         for node in nodes:
             self.node_ids.append(node.label)
             self.coordinates.append(node.coordinates.tolist())
-        
+
         self.elements = ZdfElement(self.odb)
 
 
@@ -135,7 +140,7 @@ class ZdfModelMesh:
                 "id": {
                     "__isRecord__": True,
                     "__dims__": [len(self.node_ids)],
-                    "__data__": self.node_ids
+                    "__data__": self.node_ids if self.node_ids[0] is not None else list(range(1, len(self.node_ids) + 1))
                 },
                 "value": {
                     "__isRecord__": True,
@@ -172,7 +177,7 @@ class ZdfField:
             "id": {
                 "__isRecord__": True,
                 "__dims__": [len(ids)],
-                "__data__": ids
+                "__data__": ids if ids[0] is not None else list(range(1, len(ids) + 1))
             },
             "value": {
                 "__isRecord__": True,
