@@ -1,7 +1,9 @@
 import odbAccess
+from abaqusConstants import *
 import json
 import time
 import os
+import sys
 
 #==============================================================================#
 class NaiveTransformer:
@@ -25,6 +27,24 @@ class TotalTransformer:
 class ZdfElement:
     def __init__(self, odb):
         self.odb = odb
+
+    @classmethod
+    def _node_order_transform(cls, aba_connect, element_type):
+        node_order_map = {
+            "faceq6": [0, 1, 2, 4, 5, 3],
+            "tetra": [1, 0, 2, 3],
+            "tetra10": [1, 0, 2, 3, 6, 5, 4, 8, 7, 9],
+            "wedge15": [0, 1, 2, 3, 4, 5, 12, 13, 14, 7, 8, 6, 10, 11, 9],
+            "pyram13": [0, 1, 2, 3, 4, 9, 10, 11, 12, 5, 6, 7, 8]
+        }
+
+        if element_type not in node_order_map:
+            return aba_connect
+
+        zdf_connect = []
+        for i in node_order_map[element_type]:
+            zdf_connect.append(aba_connect[i])
+        return zdf_connect
 
     @classmethod
     def _abaqus_type_2_zdf_type(cls, aba_type):
@@ -103,7 +123,7 @@ class ZdfElement:
                     }
                 }
             type2[zdf_type]["id"]["__data__"].append(element.label)
-            type2[zdf_type]["value"]["__data__"].append(list(element.connectivity))
+            type2[zdf_type]["value"]["__data__"].append(self._node_order_transform(list(element.connectivity), zdf_type))
 
         for key in type2:
             type2[key]["id"]["__dims__"] = [len(type2[key]["id"]["__data__"])]
@@ -158,21 +178,26 @@ class ZdfField:
         self.odb = odb
         self.step_name = step_name
         self.field_name = field_name
+        self.component_labels = list(self.odb.steps[self.step_name].frames[-1].fieldOutputs[self.field_name].componentLabels)
+
+        self.field_set = self.odb.steps[self.step_name].frames[-1].fieldOutputs[self.field_name]
+        position = self.odb.steps[self.step_name].frames[-1].fieldOutputs[self.field_name].locations[0].position
+        if position == INTEGRATION_POINT:
+            self.field_set = self.odb.steps[self.step_name].frames[-1].fieldOutputs[self.field_name].getSubset(position=CENTROID)
+            self.field_name = self.field_name + " element result"
 
     def get_data(self):
         ids, values, component_labels = [], [], []
 
         # 遍历所有节点的数据
-        for value in self.odb.steps[self.step_name].frames[-1].fieldOutputs[self.field_name].values:
+        for value in self.field_set.values:
             node_id = value.nodeLabel
             data = value.data
             ids.append(node_id)
             values.append(NaiveTransformer()(data))
 
-        component_labels = list(self.odb.steps[self.step_name].frames[-1].fieldOutputs[self.field_name].componentLabels)
-
         result = {
-            "variables": component_labels,
+            "variables": self.component_labels,
             "type": "translation",
             "id": {
                 "__isRecord__": True,
@@ -249,7 +274,7 @@ class ZdfGlobal:
                 "mesh" : self.model_mesh.get_data()
             },
             "result_sets" : {
-                os.path.basename(odb_file_path).split(".")[0] : {
+                os.path.basename(self.model_name).split(".")[0] : {
                     "analysis" : 1,
                     "items" : self.items.get_data()
                 }
@@ -258,11 +283,12 @@ class ZdfGlobal:
         return global_template
 
 
-# 使用示例
-odb_file_path = "D:\\temp\\Job-1-new.odb"
-step_name = "Step-1"
+if __name__ == "__main__":
+    odb_file = sys.argv[1]
+    zdf_file = sys.argv[2]
+    # odb_file_path = "D:\\temp\\Job-12.odb"
 
-data = ZdfGlobal(odb_file_path).get_data()
+    data = ZdfGlobal(odb_file).get_data()
 
-with open("data.json", "w") as f:
-    json.dump(data, f, indent=2)
+    with open(zdf_file, "w") as f:
+        json.dump(data, f, indent=2)
