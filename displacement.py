@@ -6,23 +6,6 @@ import os
 import sys
 
 #==============================================================================#
-class NaiveTransformer:
-    """
-    一个简单的转换器，不做任何处理
-    """
-    def __call__(self, data):
-        return data.tolist()
-    
-class TotalTransformer:
-    """
-    一个简单的转换器，将 x, y, z 三个分量转换为总量, 并将总量和分量一起返回
-    """
-    def __call__(self, data):
-        data = data.tolist()
-        total = (data[0]**2 + data[1]**2 + data[2]**2)**0.5
-        return [data[0], data[1], data[2], total]
-
-#==============================================================================#
 
 class ZdfElement:
     def __init__(self, odb):
@@ -178,23 +161,26 @@ class ZdfField:
         self.odb = odb
         self.step_name = step_name
         self.field_name = field_name
-        self.component_labels = list(self.odb.steps[self.step_name].frames[-1].fieldOutputs[self.field_name].componentLabels)
+        self.field = self.odb.steps[self.step_name].frames[-1].fieldOutputs[self.field_name]
 
-        self.field_set = self.odb.steps[self.step_name].frames[-1].fieldOutputs[self.field_name]
-        position = self.odb.steps[self.step_name].frames[-1].fieldOutputs[self.field_name].locations[0].position
+        self.component_labels = (list(map(str, self.field.validInvariants))
+                                 + list(self.field.componentLabels))
+
+        position = self.field.locations[0].position
         if position == INTEGRATION_POINT:
-            self.field_set = self.odb.steps[self.step_name].frames[-1].fieldOutputs[self.field_name].getSubset(position=CENTROID)
+            self.field = self.field.getSubset(position=CENTROID)
             self.field_name = self.field_name + " element result"
 
     def get_data(self):
-        ids, values, component_labels = [], [], []
+        ids, values = [], []
 
         # 遍历所有节点的数据
-        for value in self.field_set.values:
+        for value in self.field.values:
             node_id = value.nodeLabel
-            data = value.data
             ids.append(node_id)
-            values.append(NaiveTransformer()(data))
+            invariant_data = [self._getInvariantData(value, invariant_symbol)
+                              for invariant_symbol in self.field.validInvariants]
+            values.append(invariant_data + value.data.tolist())
 
         result = {
             "variables": self.component_labels,
@@ -211,6 +197,30 @@ class ZdfField:
             }
         }
         return result
+
+    def _getInvariantData(self, value, invariant_symbol):
+        if invariant_symbol == MAGNITUDE:
+            return value.magnitude
+        elif invariant_symbol == MISES:
+            return value.mises
+        elif invariant_symbol == TRESCA:
+            return value.tresca
+        elif invariant_symbol == PRESS:
+            return value.press
+        elif invariant_symbol == INV3:
+            return value.inv3
+        elif invariant_symbol == MAX_PRINCIPAL:
+            return value.maxPrincipal
+        elif invariant_symbol == MID_PRINCIPAL:
+            return value.midPrincipal
+        elif invariant_symbol == MIN_PRINCIPAL:
+            return value.minPrincipal
+        elif invariant_symbol == MAX_INPLANE_PRINCIPAL:
+            return value.maxInPlanePrincipal
+        elif invariant_symbol == MIN_INPLANE_PRINCIPAL:
+            return value.minInPlanePrincipal
+        elif invariant_symbol == OUTOFPLANE_PRINCIPAL:
+            return value.outOfPlanePrincipal
 
 class ZdfStep:
     def __init__(self, odb, step_name) -> None:
