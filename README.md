@@ -72,6 +72,7 @@ ZWSim使用一个.zdf文件来保存仿真模拟的信息。这个文件使用js
 
 最后是result_sets字段，包括很多个step， step包括了多种仿真模拟的结果信息。每种结果信息称为一个field。比如，displacement就是一个field。
 在ZWSim中，一个field要么是作用在节点上的，要么是作用在单元上的。
+
 比如说，节点的位移，节点的速度，节点的加速度等是作用在节点上的；单元的应力，单元的应变等是作用在单元上的。
 如果一个field的名字中包括了"element result"，那么这个field是作用在单元上的，否则是作用在节点上的。
 
@@ -159,6 +160,57 @@ ZWSim使用一个.zdf文件来保存仿真模拟的信息。这个文件使用js
   }
 }
 ```
+
+## python代码简介
+`driver\ZwApp\Resource\ZwSimulationPlateform\supp\odb2zdf.py`是一个python脚本，用于将Abaqus的.odb文件转换为ZWSim的.zdf文件，其中包括多个类，
+每个类都包括一个get_data方法，用于从.odb文件中读取数据。类的组织结构与前面提到的.zdf文件的结构相对应。
+
+1. ZdfAllData类包括了所有的数据，包括了ZdfModelMesh和ZdfResultItems类的对象
+(header和global信息是写死的，不需要为其创建类)。
+2. ZdfResultItems：使用ZdfStep.get_data()提取了所有的step信息，包括多个ZdfStep类的对象。
+3. ZdfStep：使用ZdfField.get_data()提取所有的field信息，包括多个ZdfField类的对象。
+4. ZdfField：从odb对象中提取了field的值。
+5. ZdfModelMesh：从odb对象中提取node信息；使用ZdfElement.get_data()提取了element信息。
+6. ZdfElement：从odb对象中提取了element的信息。
+
+## bat代码简介
+`driver\ZwApp\Resource\ZwSimulationPlateform\supp\odb2zdf.bat`是一个批处理脚本，
+用于调用`odb2zdf.py`脚本，将Abaqus的.odb文件转换为ZWSim的.zdf文件。
+代码主要分为三部分。首先，需要判断用户的机器上是否安装了abaqus，如果没有安装，则退出程序并返回状态码2。
+然后，使用abaqus python运行`odb2zdf.py`脚本，将.odb文件转换为.zdf文件。如果执行失败，则退出程序并返回状态码1。
+最后，输出执行成功的信息，并返回状态码0。
+
+```bat
+where abaqus >nul 2>nul
+if %errorlevel% neq 0 (
+	echo abaqus python not found
+	exit /b 2
+)
+:: abaqus python python_script odb_file zdf_file
+:: %1 is the path to odb2zdf.py, %2 the path to odb file, %3 the path to zdf file to be output
+abaqus python %1 %2 %3 :: 执行脚本，%1, %2, %3是.bat文件的参数
+if %errorlevel% neq 0 (
+	echo command execution failed
+	exit /b 1
+)
+echo Command executed successfully
+exit /b 0
+```
+odb2zdf.bat文件的需要三个参数，分别是`python_script`、`odb_file`和`zdf_file`。
+
+## C++代码简介
+C++代码位于`ZwOdbTranslator\src\ZwOdbTranslator.cpp`文件的ZwOdbTranslatorImp::ReadFile函数中，
+用于将Abaqus的.odb文件转换为ZWSim的.zdf文件。
+C++代码实际上相当简单,它首先获取python脚本、zdf文件和odb文件的路径，然后调用`odb2zdf.bat`脚本。
+调用的方法是使用`system`函数，这个函数会调用系统的shell来执行命令。
+
+system函数的返回值是命令的返回值，如果命令执行成功，返回值是0，否则是非0。
+如果返回值是0，说明执行成功，那么我们执行下面两行代码：
+```cpp
+q->ZwZdfTranslator::ReadFile(zdf_file); // 读取文件中的mesh信息
+q->GetZdfManager().resultPath = zdf_file; // 读取文件中的result信息
+```
+
 
 # Useful links
 1. Abaqus Scripting User's Guide

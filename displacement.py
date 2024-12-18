@@ -70,7 +70,6 @@ class ZdfElement:
         elif aba_type[:3] == "C3D":
             dims = 3
 
-
         # 决定node_num
         node_num_str = ""
         for c in aba_type[3:]:
@@ -312,7 +311,7 @@ class ZdfStep:
         result.update({field.field_name : field.get_data() for field in self.fields})
         return result
 
-class ZdfItems:
+class ZdfResultItems:
     def __init__(self, odb) -> None:
         self.odb = odb
         self.step_names = self.odb.steps.keys()
@@ -325,14 +324,14 @@ class ZdfItems:
         return {step.step_name : step.get_data() for step in self.steps}
 
 
-class ZdfGlobal:
+class ZdfAllData:
     """
     抽取odb中的全部数据
     """
     def __init__(self, odb_file_path) -> None:
         self.model_name = os.path.basename(odb_file_path).split(".")[0]
         self.odb = odbAccess.openOdb(odb_file_path)
-        self.items = ZdfItems(self.odb)
+        self.items = ZdfResultItems(self.odb)
         self.model_mesh = ZdfModelMesh(self.odb)
 
     def get_data(self):
@@ -377,7 +376,7 @@ if __name__ == "__main__":
     zdf_file = sys.argv[2]
     # odb_file_path = "D:\\temp\\Job-12.odb"
 
-    data = ZdfGlobal(odb_file).get_data()
+    data = ZdfAllData(odb_file).get_data()
 
     with open(zdf_file, "w") as f:
         json.dump(data, f, indent=2)
