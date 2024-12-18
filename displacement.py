@@ -30,16 +30,28 @@ class ZdfElement:
         return zdf_connect
 
     @classmethod
-    def _abaqus_type_2_zdf_type(cls, aba_type):
+    def _abaqus_type_2_zdf_type_beam(cls, aba_type):
+        if aba_type[1] == 2:
+            return "beam2", 6
+        elif aba_type[1] == 3:
+            return "beam3", 7
+        return "unknown", -1
+
+    @classmethod
+    def _abaqus_type_2_zdf_type_continuum(cls, aba_type):
         dims, node_num, zdf_type_id = -1, -1, -1
         zdf_type_str = ""
         # TODO: 目前只支持Solid类型中的1、2、3维单元
-        if aba_type[:3] == "C1D":
+        # abaqus element的命名规则参照
+        # 1. https://classes.engineering.wustl.edu/2009/spring/mase5513/abaqus/docs/v6.6/books/gss/default.htm?startat=ch03s01.html
+        # 2. http://130.149.89.49:2080/v2016/books/usb/default.htm?startat=pt06ch29s03ael14.html
+        if aba_type[:3] == "C1D": # Continuum element
             dims = 1
         elif aba_type[:3] == "C2D":
             dims = 2
         elif aba_type[:3] == "C3D":
             dims = 3
+
 
         # 决定node_num
         node_num_str = ""
@@ -81,6 +93,13 @@ class ZdfElement:
         }
 
         return id_and_str[dims][node_num]
+
+    def _abaqus_type_2_zdf_type(self, aba_type):
+        if aba_type[0] == "B":
+            return self._abaqus_type_2_zdf_type_beam(aba_type)
+        elif aba_type[0] == "C":
+            return self._abaqus_type_2_zdf_type_continuum(aba_type)
+        return "unknown", -1
 
 
     def get_data(self):
@@ -243,7 +262,10 @@ class ZdfItems:
     def __init__(self, odb) -> None:
         self.odb = odb
         self.step_names = self.odb.steps.keys()
-        self.steps = [ZdfStep(self.odb, step_name) for step_name in self.step_names]
+        self.steps = []
+        for step_name in self.step_names:
+            if len(self.odb.steps[step_name].frames) > 0:
+                self.steps.append(ZdfStep(self.odb, step_name))
 
     def get_data(self):
         return {step.step_name : step.get_data() for step in self.steps}
