@@ -1,5 +1,0 @@
-1. 在readfile里面写一个bat文件，在bat文件中调用python文件
-2. python生成一个zdf文件，文件位置没有要求，放在一个临时目录里就好；同时把node和element也写入文件中
-3. Translator类有一个接口可以拿到zdfmanager
-4. zdfmanager中有一个resultpath，将python转化生成的zdf文件设置到resultpath中
-5. 在bat中判断是否安装有abaqus
