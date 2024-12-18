@@ -8,11 +8,22 @@ import sys
 #==============================================================================#
 
 class ZdfElement:
+    """
+    抽取odb中的element数据
+    目前只支持beam和continuum element
+    """
     def __init__(self, odb):
         self.odb = odb
 
     @classmethod
     def _node_order_transform(cls, aba_connect, element_type):
+        """
+        将abaqus的element的node顺序转换为zdf的node顺序。
+        相同形状的element，比如四面体，abaqus和zdf的node顺序是不一样的，所以需要转换。
+        :param aba_connect: abaqus element的node顺序
+        :param element_type: zwsim的element类型
+        :return:
+        """
         node_order_map = {
             "faceq6": [0, 1, 2, 4, 5, 3],
             "tetra": [1, 0, 2, 3],
@@ -22,6 +33,7 @@ class ZdfElement:
         }
 
         if element_type not in node_order_map:
+            # 如果element type不在node_order_map中，则说明该element的node顺序不需要转换
             return aba_connect
 
         zdf_connect = []
@@ -31,21 +43,27 @@ class ZdfElement:
 
     @classmethod
     def _abaqus_type_2_zdf_type_beam(cls, aba_type):
+        """
+        将abaqus的beam element的type转换为zdf的type
+        :param aba_type: abaqus element的type, 以B开头
+        :return: zdf element的type和type id
+        """
         if aba_type[1] == 2:
             return "beam2", 6
         elif aba_type[1] == 3:
             return "beam3", 7
-        return "unknown", -1
+        raise ValueError(f"unknown abaqus beam element type: {aba_type}")
 
     @classmethod
     def _abaqus_type_2_zdf_type_continuum(cls, aba_type):
+        """
+        将abaqus的continuum element的type转换为zdf的type
+        :param aba_type: abaqus element的type, 以C开头
+        :return: zdf element的type和type id
+        """
         dims, node_num, zdf_type_id = -1, -1, -1
         zdf_type_str = ""
-        # TODO: 目前只支持Solid类型中的1、2、3维单元
-        # abaqus element的命名规则参照
-        # 1. https://classes.engineering.wustl.edu/2009/spring/mase5513/abaqus/docs/v6.6/books/gss/default.htm?startat=ch03s01.html
-        # 2. http://130.149.89.49:2080/v2016/books/usb/default.htm?startat=pt06ch29s03ael14.html
-        if aba_type[:3] == "C1D": # Continuum element
+        if aba_type[:3] == "C1D":
             dims = 1
         elif aba_type[:3] == "C2D":
             dims = 2
@@ -95,23 +113,37 @@ class ZdfElement:
         return id_and_str[dims][node_num]
 
     def _abaqus_type_2_zdf_type(self, aba_type):
-        if aba_type[0] == "B":
+        """
+        将abaqus的element的type转换为zdf的type
+        # abaqus element的命名规则参照
+        # 1. https://classes.engineering.wustl.edu/2009/spring/mase5513/abaqus/docs/v6.6/books/gss/default.htm?startat=ch03s01.html
+        # 2. http://130.149.89.49:2080/v2016/books/usb/default.htm?startat=pt06ch29s03ael14.html
+        :param aba_type: abaqus element的type
+        :return: zdf element的type和type id
+        """
+        if aba_type[0] == "B": # Beam
             return self._abaqus_type_2_zdf_type_beam(aba_type)
-        elif aba_type[0] == "C":
+        elif aba_type[0] == "C": # Continuum
             return self._abaqus_type_2_zdf_type_continuum(aba_type)
-        return "unknown", -1
+        raise ValueError(f"unknown abaqus element type: {aba_type}")
 
 
     def get_data(self):
+        """
+        获取element的数据
+        :return:
+        """
         elements = []
         for part_name, part in self.odb.rootAssembly.instances.items():
             elements = part.elements
-            break  #TODO：考虑多个part的情况，只取第一个part的element
-        type2 = {}
+            break  # TODO：考虑多个part的情况，只取第一个part的element
+        typename2elements = {}
         for element in elements:
+            # 遍历每一个element，根据type将element分类
             zdf_type, type_id = self._abaqus_type_2_zdf_type(element.type)
-            if zdf_type not in type2:
-                type2[zdf_type] = {
+            if zdf_type not in typename2elements:
+                # 如果typename2elements中没有该type，则添加该type
+                typename2elements[zdf_type] = {
                     "type id": type_id,
                     "id" : {
                         "__isRecord__": True,
@@ -124,21 +156,21 @@ class ZdfElement:
                         "__data__": []
                     }
                 }
-            type2[zdf_type]["id"]["__data__"].append(element.label)
-            type2[zdf_type]["value"]["__data__"].append(self._node_order_transform(list(element.connectivity), zdf_type))
+            # 添加element的id和value
+            typename2elements[zdf_type]["id"]["__data__"].append(element.label)
+            typename2elements[zdf_type]["value"]["__data__"].append(self._node_order_transform(list(element.connectivity), zdf_type))
 
-        for key in type2:
-            type2[key]["id"]["__dims__"] = [len(type2[key]["id"]["__data__"])]
-            type2[key]["value"]["__dims__"] = [len(type2[key]["value"]["__data__"]),
-                                               len(type2[key]["value"]["__data__"][0])]
-
-            if type2[key]["id"]["__data__"][0] is None:
-                # 处理id为None的情况
-                type2[key]["id"]["__data__"] = list(range(1, len(type2[key]["id"]["__data__"]) + 1))
-
-        return type2
+        # 添加__dims__
+        for key in typename2elements:
+            typename2elements[key]["id"]["__dims__"] = [len(typename2elements[key]["id"]["__data__"])]
+            typename2elements[key]["value"]["__dims__"] = [len(typename2elements[key]["value"]["__data__"]),
+                                               len(typename2elements[key]["value"]["__data__"][0])]
+        return typename2elements
 
 class ZdfModelMesh:
+    """
+    抽取odb中的model mesh数据, 包括node和element
+    """
     def __init__(self, odb) -> None:
         self.odb = odb
 
@@ -146,17 +178,22 @@ class ZdfModelMesh:
         nodes = []
         for part_name, part in self.odb.rootAssembly.instances.items():
             nodes = part.nodes
-            break #TODO：考虑多个part的情况，只取第一个part的node
-        self.node_ids = []
-        self.coordinates = []
+            break # TODO：考虑多个part的情况
+        self.node_ids = [] # 节点的id
+        self.coordinates = [] # 节点的坐标
         for node in nodes:
             self.node_ids.append(node.label)
             self.coordinates.append(node.coordinates.tolist())
 
+        # 获取所有element的数据
         self.elements = ZdfElement(self.odb)
 
 
     def get_data(self):
+        """
+        获取model mesh的数据
+        :return:
+        """
         result = {
             "nodes" : {
                 "id": {
@@ -176,18 +213,26 @@ class ZdfModelMesh:
         return result
 
 class ZdfField:
+    """
+    抽取odb中的field数据, 包括位移、应力、应变等
+    """
     def __init__(self, odb, step_name, field_name) -> None:
         self.odb = odb
         self.step_name = step_name
         self.field_name = field_name
         self.field = self.odb.steps[self.step_name].frames[-1].fieldOutputs[self.field_name]
 
+        # 获取field的component labels, 包括mises, tresca, press， s11等
         self.component_labels = (list(map(str, self.field.validInvariants))
                                  + list(self.field.componentLabels))
 
         position = self.field.locations[0].position
         if position == INTEGRATION_POINT:
+            # 一般来说，ZwSim的仿真分析结果都是作用在节点或者元素上的，比如每个节点上的位移，
+            # 但是abaqus中position为INTERGRATION_POINT的结果是作用在积分点上，这既不是节点也不是元素，
+            # 所以我们需要把积分点上的数据转为在element质心(CENTROID)上的数据
             self.field = self.field.getSubset(position=CENTROID)
+            # ZwSim根据field名称中有无"element result"来判断是作用在element上的还是作用在节点上
             self.field_name = self.field_name + " element result"
 
     def get_data(self):
@@ -197,11 +242,13 @@ class ZdfField:
         for value in self.field.values:
             node_id = value.nodeLabel
             ids.append(node_id)
-            invariant_data = [self._getInvariantData(value, invariant_symbol)
+            invariant_data = [self._get_invariant_data(value, invariant_symbol)
                               for invariant_symbol in self.field.validInvariants]
             values.append(invariant_data + value.data.tolist())
 
         result = {
+            # data中有很多个字段，比如s11, s22, s33, mises, tresca等
+            # self.component_labels中包含了这些字段的名称
             "variables": self.component_labels,
             "type": "translation",
             "id": {
@@ -217,7 +264,14 @@ class ZdfField:
         }
         return result
 
-    def _getInvariantData(self, value, invariant_symbol):
+    @staticmethod
+    def _get_invariant_data(value, invariant_symbol):
+        """
+        获取invariant的数据
+        :param value:
+        :param invariant_symbol:
+        :return:
+        """
         if invariant_symbol == MAGNITUDE:
             return value.magnitude
         elif invariant_symbol == MISES:
@@ -272,6 +326,9 @@ class ZdfItems:
 
 
 class ZdfGlobal:
+    """
+    抽取odb中的全部数据
+    """
     def __init__(self, odb_file_path) -> None:
         self.model_name = os.path.basename(odb_file_path).split(".")[0]
         self.odb = odbAccess.openOdb(odb_file_path)
